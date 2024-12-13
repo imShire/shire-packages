@@ -88,7 +88,12 @@ UPX_Compress(){
 	else
 		echo -e "\n${upx_name} 下载成功!\n" 
 	fi
-	which xz > /dev/null 2>&1 || (opkg list | grep ^xz || opkg update > /dev/null 2>&1 && opkg install xz --force-depends) || (echo "软件包 xz 安装失败!" && EXIT 1)
+	#判断存在opkg就调用opkg安装，不存在就调用apk安装
+	if which opkg > /dev/null 2>&1; then
+	  which xz > /dev/null 2>&1 || (opkg list | grep ^xz || opkg update > /dev/null 2>&1 && opkg install xz --force-depends) || (echo "软件包 xz 安装失败!" && EXIT 1)
+	else
+	  which xz > /dev/null 2>&1 || (apk list | grep ^xz || apk update > /dev/null 2>&1 && apk install xz --force-depends) || (echo "软件包 xz 安装失败!" && EXIT 1)
+	fi
 	mkdir -p /tmp/upx-${upx_latest_ver}-${Arch_upx}_linux
 	echo -e "正在解压 ${upx_name} ...\n" 
 	xz -d -c /tmp/upx-${upx_latest_ver}-${Arch_upx}_linux.tar.xz | tar -x -C "/tmp"
@@ -150,8 +155,18 @@ Update_Core(){
 	echo -e "\nAdGuardHome 核心更新成功!" 
 }
 
+# 只考虑86架构
+# GET_Arch() {
+# 	Archt="x86"
+# 	Arch="amd64"
+# 	Arch_upx="${Arch}"
+# 	upx_latest_ver="$(${_Downloader} https://api.github.com/repos/upx/upx/releases/latest 2>/dev/null | egrep 'tag_name' | egrep '[0-9.]+' -o 2>/dev/null)"
+# 	echo -e "\n当前设备架构: ${Arch}\n"
+# }
+
 GET_Arch() {
-	Archt="$(opkg info kernel | grep Architecture | awk -F "[ _]" '{print($2)}')"
+	# 1. uname -m 获取机器的硬件架构名称
+	Archt="$(uname -m | sed -e 's/i[3-6]86/i386/' -e 's/x86_64/x86/' -e 's/aarch64/arm64/' -e 's/armv7l/arm/' -e 's/armv6l/arm/')"
 	case "${Archt}" in
 	i386)
 		Arch=i386
